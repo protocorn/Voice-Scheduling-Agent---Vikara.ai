@@ -1,6 +1,10 @@
 # Environment variables
 .env
 
+# Token storage (contains OAuth refresh tokens)
+backend/data/
+**/tokens.json
+
 # Python
 __pycache__/
 *.py[cod]

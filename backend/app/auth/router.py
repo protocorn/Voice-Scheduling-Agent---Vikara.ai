@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
 import os
+from utils.token_store import save_tokens, DEFAULT_USER_ID
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -25,6 +25,13 @@ CLIENT_CONFIG = {
         "redirect_uris": [GOOGLE_REDIRECT_URI]
     }
 }
+
+
+@router.get("/status")
+async def auth_status():
+    """Check if Google Calendar is connected (has stored tokens)."""
+    from utils.token_store import has_tokens
+    return {"connected": has_tokens(DEFAULT_USER_ID)}
 
 
 @router.get("/google")
@@ -69,9 +76,27 @@ async def google_callback(request: Request, code: str = None, error: str = None)
         # Exchange authorization code for tokens
         flow.fetch_token(code=code)
         credentials = flow.credentials
-        
-        # Store credentials (in production, store securely in database)
-        # For now, we'll return success message
+
+        if not credentials.refresh_token:
+            return HTMLResponse(
+                content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h1>Refresh token not received</h1>
+                <p>Please revoke access at <a href="https://myaccount.google.com/permissions">Google Account permissions</a> and try again.</p>
+                <p>Make sure to grant full access when prompted.</p>
+                </body></html>
+                """,
+                status_code=400,
+            )
+
+        # Store tokens for single-user dev (backend/data/tokens.json)
+        save_tokens(
+            user_id=DEFAULT_USER_ID,
+            access_token=credentials.token,
+            refresh_token=credentials.refresh_token,
+            expires_in=None,
+        )
+
         return HTMLResponse(
             content="""
             <html>
