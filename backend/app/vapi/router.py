@@ -7,6 +7,7 @@ router = APIRouter()
 @router.post("/webhook")
 async def vapi_webhook(request: Request):
     payload = await request.json()
+    print("VAPI PAYLOAD:", payload) # For debugging
     message = payload.get("message", {})
 
     if message.get("type") != "tool-calls":
