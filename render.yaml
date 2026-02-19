@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: calendar-voice-agent
+    runtime: python
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    envVars:
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_CALENDAR_API_KEY
+        sync: false
+      - key: GOOGLE_CALENDAR_DISCOVERY_DOC
+        sync: false
+      - key: GOOGLE_CALENDAR_SCOPES
+        sync: false
