@@ -20,20 +20,26 @@ async def vapi_webhook(request: Request):
         function = tc.get("function", {})
         name = function.get("name")
 
-        arguments_str = function.get("arguments", "{}")
-        params = json.loads(arguments_str)
+        args = function.get("arguments", {})
+
+        if isinstance(args, str):
+            params = json.loads(args) if args else {}
+        elif isinstance(args, dict):
+            params = args
+        else:
+            params = {}
 
         user_id = params.get("userId", "default_user")
 
         if name == "create_calendar_event":
             # Will update this later
-            out = calendar.create_event(user_id, params)
+            #out = calendar.create_event(user_id, params)
             out = {"status": "ok", "eventId": "demo123", "htmlLink": "https://calendar.google.com/"}
 
             results.append({
                 "toolCallId": tool_call_id,
                 "name": name,
-                "result": json.dumps(result_data)
+                "result": json.dumps(out)
             })
 
         elif name == "check_availability":
