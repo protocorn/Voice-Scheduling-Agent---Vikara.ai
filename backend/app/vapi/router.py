@@ -7,7 +7,6 @@ router = APIRouter()
 @router.post("/webhook")
 async def vapi_webhook(request: Request):
     payload = await request.json()
-    print("VAPI PAYLOAD:", payload) # For debugging
     message = payload.get("message", {})
 
     if message.get("type") != "tool-calls":
@@ -18,8 +17,11 @@ async def vapi_webhook(request: Request):
 
     for tc in tool_calls:
         tool_call_id = tc.get("id")
-        name = tc.get("name")
-        params = tc.get("parameters", {}) or {}
+        function = tc.get("function", {})
+        name = function.get("name")
+
+        arguments_str = function.get("arguments", "{}")
+        params = json.loads(arguments_str)
 
         user_id = params.get("userId", "default_user")
 
@@ -31,7 +33,7 @@ async def vapi_webhook(request: Request):
             results.append({
                 "toolCallId": tool_call_id,
                 "name": name,
-                "result": json.dumps(out)
+                "result": json.dumps(result_data)
             })
 
         elif name == "check_availability":
