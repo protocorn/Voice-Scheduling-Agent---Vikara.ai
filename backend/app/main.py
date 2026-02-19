@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from app.auth.router import router as auth_router
-
+from app.vapi.router import router as vapi_router
 app = FastAPI(title="Voice Scheduling Agent API")
 
 # CORS middleware to allow frontend to connect
@@ -16,7 +16,7 @@ app.add_middleware(
 
 # Include auth routes
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
-app.include_router(voice_router, prefix="/vapi", tags=["vapi"])
+app.include_router(vapi_router, prefix="/vapi", tags=["vapi"])
 
 
 @app.get("/")
