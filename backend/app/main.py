@@ -16,6 +16,7 @@ app.add_middleware(
 
 # Include auth routes
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(voice_router, prefix="/vapi", tags=["vapi"])
 
 
 @app.get("/")
