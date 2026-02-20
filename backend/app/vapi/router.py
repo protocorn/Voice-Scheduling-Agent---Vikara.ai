@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from dotenv import load_dotenv
 
-from app.calander.service import create_event
+from app.calander.service import create_event, check_availability
 from utils.access_token import refresh_access_token
 from utils.token_store import get_refresh_token, DEFAULT_USER_ID
 
@@ -96,19 +96,19 @@ async def vapi_webhook(request: Request):
     message = payload.get("message", {})
     message_type = message.get("type")
 
-    # Handle assistant-request: provide current date/time context
+    # Handle assistant-request: inject live server time at the start of every call
     if message_type == "assistant-request":
-        current_time_context = _get_current_datetime_context()
+        t = _get_current_time_payload()  # UTC until we know user's timezone
         return JSONResponse({
             "messages": [
                 {
                     "role": "system",
                     "content": (
-                        f"{current_time_context}\n\n"
-                        "SCHEDULING RULE: You MUST call get_current_time as your VERY FIRST tool call "
-                        "whenever the user wants to schedule, reschedule, or mentions any date/time. "
-                        "Do NOT attempt to create a calendar event without first calling get_current_time."
-                    )
+                        f"[SERVER TIME] The current UTC time is {t['readable']}. "
+                        f"Today is {t['dayOfWeek']}, {t['date']}. "
+                        "This will be updated to the user's local timezone once you collect their location. "
+                        "Never use your own internal sense of time — always rely on [SERVER TIME] values."
+                    ),
                 }
             ]
         })
@@ -119,6 +119,23 @@ async def vapi_webhook(request: Request):
 
     results = []
     tool_calls = message.get("toolCallList", []) or []
+
+    # Scan all tool calls upfront to find the user's timezone if any tool carries it.
+    # This lets us inject accurate local time into every result in this batch.
+    call_timezone = None
+    for tc in tool_calls:
+        raw_args = tc.get("function", {}).get("arguments", {})
+        if isinstance(raw_args, str):
+            try:
+                raw_args = json.loads(raw_args) if raw_args else {}
+            except json.JSONDecodeError:
+                raw_args = {}
+        if isinstance(raw_args, dict) and raw_args.get("timezone"):
+            call_timezone = raw_args["timezone"]
+            break
+
+    # Current time stamped once for the whole request, in the user's timezone when known.
+    server_time = _get_current_time_payload(call_timezone)
 
     for tc in tool_calls:
         tool_call_id = tc.get("id")
@@ -137,6 +154,7 @@ async def vapi_webhook(request: Request):
                     "result": json.dumps({
                         "error": True,
                         "message": f"Invalid JSON in tool arguments: {str(e)}",
+                        "serverCurrentTime": server_time,
                     }),
                 })
                 continue
@@ -148,7 +166,7 @@ async def vapi_webhook(request: Request):
         user_id = params.get("userId", DEFAULT_USER_ID)
 
         if name == "get_current_time":
-            user_tz = params.get("timezone")
+            user_tz = params.get("timezone") or call_timezone
             out = _get_current_time_payload(user_tz)
             results.append({
                 "toolCallId": tool_call_id,
@@ -163,11 +181,14 @@ async def vapi_webhook(request: Request):
                 results.append({
                     "toolCallId": tool_call_id,
                     "name": name,
-                    "result": json.dumps({"error": True, "message": str(e)}),
+                    "result": json.dumps({
+                        "error": True,
+                        "message": str(e),
+                        "serverCurrentTime": server_time,
+                    }),
                 })
                 continue
 
-            # Accept camelCase parameters from Vapi
             title = params.get("title")
             startIso = params.get("startIso")
             endIso = params.get("endIso")
@@ -175,7 +196,7 @@ async def vapi_webhook(request: Request):
 
             if not all([title, startIso, endIso]):
                 missing = [f for f in ["title", "startIso", "endIso"] if not params.get(f)]
-                current = _get_current_time_payload(tz or None)
+                current = _get_current_time_payload(tz or call_timezone)
                 results.append({
                     "toolCallId": tool_call_id,
                     "name": name,
@@ -183,35 +204,38 @@ async def vapi_webhook(request: Request):
                         "error": True,
                         "message": (
                             f"Cannot create event. Missing fields: {missing}. "
-                            "You must NOT retry create_calendar_event yet. "
-                            "Step 1: use the currentTime below to compute startIso and endIso based on what the user requested. "
-                            "Step 2: call create_calendar_event with title, startIso, endIso, and timezone all filled in."
+                            "Use serverCurrentTime below to compute the correct startIso and endIso, "
+                            "then retry create_calendar_event with all fields filled in."
                         ),
-                        "currentTime": current,
+                        "serverCurrentTime": current,
                     }),
                 })
                 continue
 
-            # Reject events in the past and return current time so the AI can correct
+            # Reject events in the past
             try:
                 start_dt = datetime.fromisoformat(startIso.replace("Z", "+00:00"))
                 if start_dt.tzinfo is None:
                     start_dt = start_dt.replace(tzinfo=timezone.utc)
-                now = datetime.now(timezone.utc)
-                if start_dt < now:
-                    current = _get_current_time_payload(tz or None)
+                now_utc = datetime.now(timezone.utc)
+                if start_dt < now_utc:
+                    current = _get_current_time_payload(tz or call_timezone)
                     results.append({
                         "toolCallId": tool_call_id,
                         "name": name,
                         "result": json.dumps({
                             "error": True,
-                            "message": "Event start time is in the past. Use the server's current time to schedule. Call get_current_time first, then create the event with future startIso and endIso.",
-                            "currentTime": current,
+                            "message": (
+                                "Event start time is in the past. "
+                                "Use serverCurrentTime below — it shows the real current time in the user's timezone. "
+                                "Recompute startIso and endIso from it, then retry."
+                            ),
+                            "serverCurrentTime": current,
                         }),
                     })
                     continue
             except (ValueError, TypeError):
-                pass  # Invalid ISO format; let create_event fail or succeed
+                pass
 
             try:
                 out = create_event(
@@ -230,11 +254,38 @@ async def vapi_webhook(request: Request):
                 results.append({
                     "toolCallId": tool_call_id,
                     "name": name,
-                    "result": json.dumps({"error": True, "message": str(e)}),
+                    "result": json.dumps({
+                        "error": True,
+                        "message": str(e),
+                        "serverCurrentTime": server_time,
+                    }),
                 })
 
         elif name == "check_availability":
-            out = {"available": True, "conflicts": []}
+            startIso_check = params.get("startIso")
+            endIso_check = params.get("endIso")
+            user_tz_check = params.get("timezone", call_timezone or "UTC")
+
+            if not startIso_check or not endIso_check:
+                results.append({
+                    "toolCallId": tool_call_id,
+                    "name": name,
+                    "result": json.dumps({
+                        "error": True,
+                        "message": "Missing startIso and endIso. Compute them from serverCurrentTime first.",
+                        "serverCurrentTime": server_time,
+                    }),
+                })
+                continue
+
+            try:
+                access_token = _get_access_token(user_id)
+                out = check_availability(access_token, startIso_check, endIso_check, user_tz_check)
+            except Exception as e:
+                out = {"error": True, "message": str(e)}
+
+            # Always attach server time so the AI has a verified reference alongside availability
+            out["serverCurrentTime"] = server_time
             results.append({
                 "toolCallId": tool_call_id,
                 "name": name,
@@ -245,15 +296,29 @@ async def vapi_webhook(request: Request):
             results.append({
                 "toolCallId": tool_call_id,
                 "name": name,
-                "result": json.dumps({"error": True, "message": f"Unknown tool: {name}"}),
+                "result": json.dumps({
+                    "error": True,
+                    "message": f"Unknown tool: {name}",
+                    "serverCurrentTime": server_time,
+                }),
             })
 
-    # Include current time context in response for reference
+    # Inject current time as a system message so the AI sees it in context
+    # regardless of which tool it called or whether it called get_current_time at all.
+    tz_label = server_time.get("timezone", "UTC")
+    time_injection = (
+        f"[SERVER TIME] Right now it is {server_time['readable']} ({tz_label}). "
+        f"Today is {server_time['dayOfWeek']}, {server_time['date']}. "
+        "Use ONLY this value for any date/time calculations. Do not use your own internal sense of time."
+    )
+
     response = {
         "results": results,
-        "state": {
-            "currentDateTime": datetime.now().isoformat(),
-            "currentDateTimeReadable": _get_current_datetime_context()
-        }
+        "messages": [
+            {
+                "role": "system",
+                "content": time_injection,
+            }
+        ],
     }
     return JSONResponse(response)
