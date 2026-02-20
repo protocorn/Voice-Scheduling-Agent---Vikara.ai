@@ -6,9 +6,10 @@ from utils.token_store import save_tokens, DEFAULT_USER_ID
 from dotenv import load_dotenv
 load_dotenv()
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_ID    = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI")
+FRONTEND_URL         = os.getenv("FRONTEND_URL")
 
 router = APIRouter()
 
@@ -97,17 +98,7 @@ async def google_callback(request: Request, code: str = None, error: str = None)
             expires_in=None,
         )
 
-        return HTMLResponse(
-            content="""
-            <html>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1>✅ Successfully Connected!</h1>
-                    <p>Your Google Calendar has been connected.</p>
-                    <p>You can now close this window.</p>
-                </body>
-            </html>
-            """
-        )
+        return RedirectResponse(url=f"{FRONTEND_URL}/voice.html?connected=1")
     except Exception as e:
         return HTMLResponse(
             content=f"<h1>Error</h1><p>Failed to authenticate: {str(e)}</p>",

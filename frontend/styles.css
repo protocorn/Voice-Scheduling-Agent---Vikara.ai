@@ -86,3 +86,256 @@
     margin-top: 1.2rem;
     margin-bottom: 0.6rem;
   }
+
+/* ─── Utilities ─────────────────────────────────────────────────────────── */
+.v-hidden { display: none !important; }
+
+/* ─── Connected badge on index page ─────────────────────────────────────── */
+.connected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1.4rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.connected-badge .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+}
+
+.voice-agent-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.9rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.98rem;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+  margin-top: 1rem;
+}
+.voice-agent-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 0 22px rgba(99, 102, 241, 0.45);
+}
+
+/* ─── Voice page layout ─────────────────────────────────────────────────── */
+.voice-page {
+  position: relative;
+  overflow: hidden;
+  min-height: 540px;
+  max-width: 420px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+  transition: color 0.2s;
+}
+.back-link:hover { color: #e5e7eb; }
+
+.voice-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  margin-top: 2rem;
+}
+
+/* ─── Mic wrapper + rings ────────────────────────────────────────────────── */
+.mic-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 170px;
+  height: 170px;
+}
+
+.mic-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(99, 202, 245, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: border-color 0.4s;
+}
+.mic-ring:nth-child(1) { width: 112px; height: 112px; }
+.mic-ring:nth-child(2) { width: 140px; height: 140px; }
+.mic-ring:nth-child(3) { width: 168px; height: 168px; }
+
+.mic-wrapper.active .mic-ring {
+  animation: ringPulse 2.2s ease-out infinite;
+}
+.mic-wrapper.active .mic-ring:nth-child(2) { animation-delay: 0.45s; }
+.mic-wrapper.active .mic-ring:nth-child(3) { animation-delay: 0.9s; }
+
+.mic-wrapper.agent-talking .mic-ring {
+  border-color: rgba(20, 184, 166, 0.35);
+}
+
+@keyframes ringPulse {
+  0%   { opacity: 0;   transform: scale(0.88); }
+  35%  { opacity: 0.9; }
+  100% { opacity: 0;   transform: scale(1.12); }
+}
+
+/* ─── Mic button ─────────────────────────────────────────────────────────── */
+.mic-btn {
+  position: relative;
+  z-index: 1;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #1e3a5f, #162038);
+  color: #e5e7eb;
+  box-shadow:
+    0 6px 24px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.07);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.35s ease;
+}
+.mic-btn:hover:not(:disabled) {
+  transform: scale(1.07);
+  box-shadow:
+    0 6px 28px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(99, 202, 245, 0.45),
+    0 0 22px rgba(99, 202, 245, 0.2);
+}
+.mic-btn:active:not(:disabled) { transform: scale(0.97); }
+.mic-btn:disabled { cursor: default; opacity: 0.65; }
+
+.mic-wrapper.active .mic-btn {
+  background: linear-gradient(145deg, #0ea5e9, #0369a1);
+  box-shadow:
+    0 6px 28px rgba(14, 165, 233, 0.45),
+    0 0 0 2px rgba(14, 165, 233, 0.55);
+}
+.mic-wrapper.agent-talking .mic-btn {
+  background: linear-gradient(145deg, #0d9488, #0f766e);
+  box-shadow:
+    0 6px 28px rgba(13, 148, 136, 0.45),
+    0 0 0 2px rgba(13, 148, 136, 0.55);
+}
+
+/* ─── Spinner ────────────────────────────────────────────────────────────── */
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255,255,255,0.18);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Status text ────────────────────────────────────────────────────────── */
+.voice-status { text-align: center; }
+.status-label {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-bottom: 0.3rem;
+}
+.status-sub {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+/* ─── Waveform ───────────────────────────────────────────────────────────── */
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 44px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.waveform.active { opacity: 1; }
+
+.wave-bar {
+  width: 4px;
+  height: 6px;
+  border-radius: 3px;
+  background: #0ea5e9;
+  transform-origin: center bottom;
+}
+.waveform.agent-mode .wave-bar { background: #14b8a6; }
+
+.waveform.active .wave-bar { animation: waveBounce 0.8s ease-in-out infinite alternate; }
+.waveform.active .wave-bar:nth-child(1) { animation-duration: 0.95s; }
+.waveform.active .wave-bar:nth-child(2) { animation-duration: 0.7s;  animation-delay: 0.1s; }
+.waveform.active .wave-bar:nth-child(3) { animation-duration: 0.85s; animation-delay: 0.2s; }
+.waveform.active .wave-bar:nth-child(4) { animation-duration: 1.1s;  animation-delay: 0.05s; }
+.waveform.active .wave-bar:nth-child(5) { animation-duration: 0.75s; animation-delay: 0.18s; }
+.waveform.active .wave-bar:nth-child(6) { animation-duration: 0.9s;  animation-delay: 0.28s; }
+.waveform.active .wave-bar:nth-child(7) { animation-duration: 0.8s;  animation-delay: 0.12s; }
+
+@keyframes waveBounce {
+  0%   { height: 4px; }
+  100% { height: 34px; }
+}
+
+/* ─── Mic permission overlay ─────────────────────────────────────────────── */
+.permission-card {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 11, 24, 0.96);
+  border-radius: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  gap: 0.9rem;
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.perm-emoji  { font-size: 3rem; }
+.perm-title  { font-size: 1.1rem; font-weight: 600; color: #e5e7eb; }
+.perm-desc   { font-size: 0.875rem; color: #9ca3af; line-height: 1.55; max-width: 280px; }
+.retry-btn {
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(255,255,255,0.05);
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.retry-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(99, 202, 245, 0.5);
+}

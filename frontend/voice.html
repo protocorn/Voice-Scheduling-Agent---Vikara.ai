@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voice Agent · Calendar Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <div class="page voice-page" id="voice-page">
+
+    <header class="header">
+      <a href="index.html" class="back-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Back
+      </a>
+      <h1>AI Voice Scheduler</h1>
+      <p>Talk to schedule your next meeting</p>
+    </header>
+
+    <main class="voice-main" id="voice-main">
+
+      <!-- Mic button with animated rings -->
+      <div class="mic-wrapper" id="mic-wrapper">
+        <div class="mic-ring"></div>
+        <div class="mic-ring"></div>
+        <div class="mic-ring"></div>
+
+        <button class="mic-btn" id="mic-btn" aria-label="Start voice assistant">
+          <!-- Default mic icon -->
+          <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+
+          <!-- Stop icon (when call active) -->
+          <svg id="stop-icon" class="v-hidden" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="2.5"/>
+          </svg>
+
+          <!-- Loading spinner -->
+          <div id="spinner" class="spinner v-hidden"></div>
+        </button>
+      </div>
+
+      <!-- Status text -->
+      <div class="voice-status">
+        <p id="status-label" class="status-label">Tap to speak</p>
+        <p id="status-sub" class="status-sub">Your AI assistant is ready</p>
+      </div>
+
+      <!-- Audio waveform bars -->
+      <div class="waveform" id="waveform">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+
+    </main>
+
+    <!-- Microphone permission denied overlay -->
+    <div class="permission-card v-hidden" id="permission-card">
+      <div class="perm-emoji">🎤</div>
+      <p class="perm-title">Microphone Access Required</p>
+      <p class="perm-desc">
+        To use the voice agent, allow microphone access in your browser settings, then tap the button below to try again.
+      </p>
+      <button class="retry-btn" id="retry-btn">Try Again</button>
+    </div>
+
+  </div>
+
+  <script type="module" src="voice.js"></script>
+</body>
+</html>

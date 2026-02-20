@@ -9,19 +9,48 @@
 <body>
     <div class="page">
         <header class="header">
-            <h1> Connect your Google Calendar to schedule meetings</h1>
-            <p> Authorize Google Calendar to access your calendar and schedule meetings</p>
+            <h1>Connect your Google Calendar</h1>
+            <p>Authorize Google Calendar so the AI agent can schedule your meetings</p>
         </header>
 
         <main class="main">
-            <button class="primary-button" id="connect-google-calendar">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" />
-            <span>Connect Google Calendar</span>
-        </button>
 
-        <p class="helper-text">
-            You'll be redirected to Google to choose an account and grant access.
-          </p>
+            <!-- Shown while checking auth status -->
+            <div id="state-loading" class="v-hidden">
+                <div class="spinner" style="margin: 1.4rem auto 0;"></div>
+            </div>
+
+            <!-- Shown when NOT connected -->
+            <div id="state-disconnected" class="v-hidden">
+                <button class="primary-button" id="connect-google-calendar">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" />
+                    <span>Connect Google Calendar</span>
+                </button>
+                <p class="helper-text">
+                    You'll be redirected to Google to choose an account and grant access.
+                </p>
+            </div>
+
+            <!-- Shown when connected -->
+            <div id="state-connected" class="v-hidden">
+                <div class="connected-badge">
+                    <span class="dot"></span>
+                    Google Calendar connected
+                </div>
+                <a href="voice.html" class="voice-agent-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="22"/>
+                    </svg>
+                    Start Voice Agent
+                </a>
+                <p class="helper-text" style="margin-top: 0.5rem;">
+                    Not the right account?
+                    <button id="reconnect-btn" style="background:none;border:none;color:#9ca3af;text-decoration:underline;cursor:pointer;font-size:inherit;padding:0;">Reconnect</button>
+                </p>
+            </div>
+
         </main>
     </div>
 
