@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,9 +8,21 @@ from app.vapi.router import router as vapi_router
 
 app = FastAPI(title="Voice Scheduling Agent API")
 
+# In production the frontend is served from the same origin, so CORS is only
+# needed for local development. Keeping the prod domain explicit is safer.
+_allowed_origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://voice-scheduling-agent-vikara-ai.onrender.com",
+]
+# Allow an override via env var for future domain changes without a redeploy.
+_extra = os.getenv("EXTRA_CORS_ORIGINS", "")
+if _extra:
+    _allowed_origins += [o.strip() for o in _extra.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
