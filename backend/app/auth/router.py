@@ -2,21 +2,18 @@ from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from google_auth_oauthlib.flow import Flow
 import os
-from utils.token_store import save_tokens, DEFAULT_USER_ID
+from utils.token_store import save_tokens, has_tokens
 from dotenv import load_dotenv
 load_dotenv()
 
-GOOGLE_CLIENT_ID    = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI")
-FRONTEND_URL         = os.getenv("FRONTEND_URL")
 
 router = APIRouter()
 
-# OAuth 2.0 scopes needed for calendar access
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-# Client configuration (OAuth 2.0)
 CLIENT_CONFIG = {
     "web": {
         "client_id": GOOGLE_CLIENT_ID,
@@ -29,52 +26,60 @@ CLIENT_CONFIG = {
 
 
 @router.get("/status")
-async def auth_status():
-    """Check if Google Calendar is connected (has stored tokens)."""
-    from utils.token_store import has_tokens
-    return {"connected": has_tokens(DEFAULT_USER_ID)}
+async def auth_status(userId: str):
+    """Check if this user has connected their Google Calendar."""
+    return {"connected": has_tokens(userId)}
 
 
 @router.get("/google")
-async def google_auth():
-    """Initiate Google OAuth flow"""
+async def google_auth(userId: str):
+    """Start Google OAuth. The userId is carried through the round-trip via
+    the OAuth `state` parameter so we know whose tokens to save on callback."""
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
         redirect_uri=GOOGLE_REDIRECT_URI
     )
-    
-    # Generate authorization URL
-    authorization_url, state = flow.authorization_url(
+
+    authorization_url, _ = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
-        prompt='consent'  # Force consent screen to get refresh token
+        prompt='consent',
+        state=userId,
     )
-    
-    # Redirect user to Google's consent screen
+
     return RedirectResponse(url=authorization_url)
 
 
 @router.get("/callback")
-async def google_callback(request: Request, code: str = None, error: str = None):
-    """Handle Google OAuth callback"""
+async def google_callback(
+    request: Request,
+    code: str = None,
+    error: str = None,
+    state: str = None,
+):
+    """Handle Google OAuth callback. `state` is the userId set in /google."""
     if error:
         return HTMLResponse(
             content=f"<h1>Authorization failed</h1><p>Error: {error}</p>",
             status_code=400
         )
-    
+
     if not code:
         raise HTTPException(status_code=400, detail="Authorization code not provided")
-    
+
+    if not state:
+        raise HTTPException(status_code=400, detail="Missing userId in OAuth state")
+
+    user_id = state
+
     try:
         flow = Flow.from_client_config(
             CLIENT_CONFIG,
             scopes=SCOPES,
             redirect_uri=GOOGLE_REDIRECT_URI
         )
-        
-        # Exchange authorization code for tokens
+
         flow.fetch_token(code=code)
         credentials = flow.credentials
 
@@ -83,22 +88,23 @@ async def google_callback(request: Request, code: str = None, error: str = None)
                 content="""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px;">
                 <h1>Refresh token not received</h1>
-                <p>Please revoke access at <a href="https://myaccount.google.com/permissions">Google Account permissions</a> and try again.</p>
-                <p>Make sure to grant full access when prompted.</p>
+                <p>Please revoke access at
+                <a href="https://myaccount.google.com/permissions">Google Account permissions</a>
+                and try again.</p>
                 </body></html>
                 """,
                 status_code=400,
             )
 
-        # Store tokens for single-user dev (backend/data/tokens.json)
         save_tokens(
-            user_id=DEFAULT_USER_ID,
+            user_id=user_id,
             access_token=credentials.token,
             refresh_token=credentials.refresh_token,
             expires_in=None,
         )
 
-        return RedirectResponse(url=f"{FRONTEND_URL}/voice.html?connected=1")
+        return RedirectResponse(url="/voice.html?connected=1")
+
     except Exception as e:
         return HTMLResponse(
             content=f"<h1>Error</h1><p>Failed to authenticate: {str(e)}</p>",
