@@ -62,7 +62,7 @@
       </div>
 
       <!-- Text input -->
-      <div class="text-input-section">
+      <div class="text-input-section v-hidden" id="text-input-section">
         <p class="text-input-label">or type your message</p>
         <div class="text-input-row" id="text-input-row">
           <input
@@ -87,9 +87,9 @@
     <!-- Microphone permission denied overlay -->
     <div class="permission-card v-hidden" id="permission-card">
       <div class="perm-emoji">🎤</div>
-      <p class="perm-title">Microphone Access Required</p>
+      <p class="perm-title">Microphone Blocked</p>
       <p class="perm-desc">
-        To use the voice agent, allow microphone access in your browser settings, then tap the button below to try again.
+        Allow microphone access in your browser settings and tap <strong>Try Again</strong> to use voice — or just type your message below.
       </p>
       <button class="retry-btn" id="retry-btn">Try Again</button>
     </div>

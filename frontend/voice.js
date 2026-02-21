@@ -31,6 +31,7 @@ const permCard    = document.getElementById('permission-card');
 const retryBtn    = document.getElementById('retry-btn');
 const textInput   = document.getElementById('text-input');
 const sendBtn     = document.getElementById('send-btn');
+const textSection = document.getElementById('text-input-section');
 
 // ─── Runtime state ──────────────────────────────────────────────────────────
 let vapi                = null;
@@ -42,7 +43,8 @@ let agentSpeakingTimer  = null;   // debounce timer for agent-speaking → liste
 function show(el)  { el.classList.remove('v-hidden'); }
 function hide(el)  { el.classList.add('v-hidden'); }
 
-function setTextInputEnabled(enabled) {
+function setTextSection(visible, enabled = true) {
+  visible ? show(textSection) : hide(textSection);
   textInput.disabled = !enabled;
   sendBtn.disabled   = !enabled;
 }
@@ -75,35 +77,37 @@ function applyState(state) {
     case 'idle':
       setIcons({ mic: true });
       setStatus('Tap to speak', 'Your AI assistant is ready');
-      setTextInputEnabled(true);
+      setTextSection(false);
       break;
 
     case 'requesting-mic':
       setIcons({ spin: true });
       setStatus('Checking microphone…', 'Please allow access when prompted');
       micBtn.disabled = true;
-      setTextInputEnabled(false);
+      setTextSection(false);
       break;
 
     case 'mic-denied':
       setIcons({ mic: true });
-      setStatus('Microphone required', '');
+      setStatus('Microphone blocked', '');
       show(permCard);
-      setTextInputEnabled(false);
+      // Mic is blocked — surface text input as a fallback so the user
+      // can still interact with the agent by typing.
+      setTextSection(true, true);
       break;
 
     case 'connecting':
       setIcons({ spin: true });
       setStatus('Connecting…', 'Starting your voice assistant');
       micBtn.disabled = true;
-      setTextInputEnabled(false);
+      setTextSection(false);
       break;
 
     case 'listening':
       setIcons({ stop: true });
       setStatus('Listening', 'Speak or type — tap ■ to end');
       micWrapper.classList.add('active');
-      setTextInputEnabled(true);
+      setTextSection(true, true);
       break;
 
     case 'user-speaking':
@@ -111,7 +115,8 @@ function applyState(state) {
       setStatus('Listening…', "Go ahead, I'm listening");
       micWrapper.classList.add('active', 'user-speaking');
       setWaveform(true, false);
-      setTextInputEnabled(true);
+      // Mic is capturing — keep text input available for simultaneous use.
+      setTextSection(true, true);
       break;
 
     case 'agent-speaking':
@@ -119,21 +124,22 @@ function applyState(state) {
       setStatus('Agent speaking…', 'Tap to end call');
       micWrapper.classList.add('active', 'agent-talking');
       setWaveform(true, true);
-      setTextInputEnabled(false);
+      // Lock input while agent is mid-response.
+      setTextSection(true, false);
       break;
 
     case 'call-ended':
       setIcons({ mic: true });
       setStatus('Call ended', 'Tap to start a new conversation');
       isCallActive = false;
-      setTextInputEnabled(true);
+      setTextSection(false);
       break;
 
     case 'call-error':
       setIcons({ mic: true });
       setStatus('Connection error', 'Tap to try again');
       isCallActive = false;
-      setTextInputEnabled(true);
+      setTextSection(false);
       break;
   }
 }
