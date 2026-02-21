@@ -33,9 +33,10 @@ const textInput   = document.getElementById('text-input');
 const sendBtn     = document.getElementById('send-btn');
 
 // ─── Runtime state ──────────────────────────────────────────────────────────
-let vapi         = null;
-let isCallActive = false;
-let pendingText  = null;   // text queued before the call is live
+let vapi                = null;
+let isCallActive        = false;
+let pendingText         = null;   // text queued before the call is live
+let agentSpeakingTimer  = null;   // debounce timer for agent-speaking → listening
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 function show(el)  { el.classList.remove('v-hidden'); }
@@ -197,6 +198,10 @@ async function startCall() {
     vapi.on('call-end', () => {
       isCallActive = false;
       vapi = null;
+      if (agentSpeakingTimer) {
+        clearTimeout(agentSpeakingTimer);
+        agentSpeakingTimer = null;
+      }
       applyState('call-ended');
     });
 
@@ -209,9 +214,23 @@ async function startCall() {
     });
 
     vapi.on('message', (msg) => {
-      // Track agent speaking state via speech-update events
       if (msg.type === 'speech-update' && isCallActive && msg.role === 'assistant') {
-        applyState(msg.status === 'started' ? 'agent-speaking' : 'listening');
+        if (msg.status === 'started') {
+          // Cancel any pending "return to listening" so mid-chunk pauses
+          // don't briefly flash the wrong state.
+          if (agentSpeakingTimer) {
+            clearTimeout(agentSpeakingTimer);
+            agentSpeakingTimer = null;
+          }
+          applyState('agent-speaking');
+        } else {
+          // Debounce: only switch back after 800 ms of silence.
+          // If a new chunk starts before then, the timer is cancelled above.
+          agentSpeakingTimer = setTimeout(() => {
+            agentSpeakingTimer = null;
+            if (isCallActive) applyState('listening');
+          }, 800);
+        }
       }
     });
 
