@@ -29,14 +29,22 @@ const statusSub   = document.getElementById('status-sub');
 const waveform    = document.getElementById('waveform');
 const permCard    = document.getElementById('permission-card');
 const retryBtn    = document.getElementById('retry-btn');
+const textInput   = document.getElementById('text-input');
+const sendBtn     = document.getElementById('send-btn');
 
 // ─── Runtime state ──────────────────────────────────────────────────────────
 let vapi         = null;
 let isCallActive = false;
+let pendingText  = null;   // text queued before the call is live
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 function show(el)  { el.classList.remove('v-hidden'); }
 function hide(el)  { el.classList.add('v-hidden'); }
+
+function setTextInputEnabled(enabled) {
+  textInput.disabled = !enabled;
+  sendBtn.disabled   = !enabled;
+}
 
 function setIcons({ mic = false, stop = false, spin = false } = {}) {
   mic  ? show(micIcon)  : hide(micIcon);
@@ -66,30 +74,35 @@ function applyState(state) {
     case 'idle':
       setIcons({ mic: true });
       setStatus('Tap to speak', 'Your AI assistant is ready');
+      setTextInputEnabled(true);
       break;
 
     case 'requesting-mic':
       setIcons({ spin: true });
       setStatus('Checking microphone…', 'Please allow access when prompted');
       micBtn.disabled = true;
+      setTextInputEnabled(false);
       break;
 
     case 'mic-denied':
       setIcons({ mic: true });
       setStatus('Microphone required', '');
       show(permCard);
+      setTextInputEnabled(false);
       break;
 
     case 'connecting':
       setIcons({ spin: true });
       setStatus('Connecting…', 'Starting your voice assistant');
       micBtn.disabled = true;
+      setTextInputEnabled(false);
       break;
 
     case 'listening':
       setIcons({ stop: true });
-      setStatus('Listening', 'Speak naturally — tap to end call');
+      setStatus('Listening', 'Speak or type — tap ■ to end');
       micWrapper.classList.add('active');
+      setTextInputEnabled(true);
       break;
 
     case 'user-speaking':
@@ -97,6 +110,7 @@ function applyState(state) {
       setStatus('Listening…', "Go ahead, I'm listening");
       micWrapper.classList.add('active', 'user-speaking');
       setWaveform(true, false);
+      setTextInputEnabled(true);
       break;
 
     case 'agent-speaking':
@@ -104,18 +118,21 @@ function applyState(state) {
       setStatus('Agent speaking…', 'Tap to end call');
       micWrapper.classList.add('active', 'agent-talking');
       setWaveform(true, true);
+      setTextInputEnabled(false);
       break;
 
     case 'call-ended':
       setIcons({ mic: true });
       setStatus('Call ended', 'Tap to start a new conversation');
       isCallActive = false;
+      setTextInputEnabled(true);
       break;
 
     case 'call-error':
       setIcons({ mic: true });
       setStatus('Connection error', 'Tap to try again');
       isCallActive = false;
+      setTextInputEnabled(true);
       break;
   }
 }
@@ -168,6 +185,13 @@ async function startCall() {
     vapi.on('call-start', () => {
       isCallActive = true;
       applyState('listening');
+      // If the call was triggered by a text submission, send the queued message now.
+      if (pendingText) {
+        const textToSend = pendingText;
+        pendingText = null;
+        // Small delay so the assistant has time to fully initialise.
+        setTimeout(() => sendTextToVapi(textToSend), 600);
+      }
     });
 
     vapi.on('call-end', () => {
@@ -247,9 +271,45 @@ async function handleMicClick() {
   await startCall();
 }
 
+// ─── Text input ───────────────────────────────────────────────────────────────
+function sendTextToVapi(text) {
+  if (!vapi || !isCallActive) return;
+  vapi.send({
+    type: 'add-message',
+    message: { role: 'user', content: text },
+  });
+}
+
+async function handleTextSend() {
+  const text = textInput.value.trim();
+  if (!text) return;
+
+  textInput.value = '';
+
+  if (isCallActive) {
+    // Call already live — inject immediately.
+    sendTextToVapi(text);
+    return;
+  }
+
+  // No active call: queue the text and start one.
+  // We skip the mic-permission gate since the user is typing, not speaking.
+  // Vapi still opens an audio output channel (for TTS) which doesn't need mic.
+  pendingText = text;
+  await startCall();
+}
+
 // ─── Events ───────────────────────────────────────────────────────────────────
 micBtn.addEventListener('click', handleMicClick);
 retryBtn.addEventListener('click', handleMicClick);
+
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleTextSend();
+  }
+});
+sendBtn.addEventListener('click', handleTextSend);
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 // Verify the user has a connected Google Calendar before letting them call.

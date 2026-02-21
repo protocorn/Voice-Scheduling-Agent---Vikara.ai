@@ -61,6 +61,27 @@
         <div class="wave-bar"></div>
       </div>
 
+      <!-- Text input -->
+      <div class="text-input-section">
+        <p class="text-input-label">or type your message</p>
+        <div class="text-input-row" id="text-input-row">
+          <input
+            type="text"
+            id="text-input"
+            class="text-input"
+            placeholder="Type here and press Enter…"
+            autocomplete="off"
+            maxlength="500"
+          />
+          <button class="send-btn" id="send-btn" aria-label="Send message">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
     </main>
 
     <!-- Microphone permission denied overlay -->
